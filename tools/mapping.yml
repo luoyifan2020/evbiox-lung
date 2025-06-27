@@ -1,0 +1,25 @@
+# ========= LIDC ==========
+"E:\\EVBioX-Lung\\data\\manifest-1600709154662\\metadata.csv"                               : lidc/meta/metadata.csv
+"E:\\EVBioX-Lung\\data\\manifest-1600709154662\\LIDC-XML-only.zip"                          : lidc/annot/LIDC-XML-only.zip
+"E:\\EVBioX-Lung\\data\\manifest-1600709154662\\lidc-idri-nodule-counts-6-23-2015.xlsx"     : lidc/meta/nodule_counts.xlsx
+"E:\\EVBioX-Lung\\data\\manifest-1600709154662\\tcia-diagnosis-data-2012-04-20.xls"         : lidc/meta/diagnosis.xls
+
+
+# ========= NSCLC ==========
+"E:\\EVBioX-Lung\\data\\manifest-1622561851074\\metadata.csv"                               : nsclc/meta/metadata.csv
+"E:\\EVBioX-Lung\\data\\manifest-1622561851074\\AIM_files_updated-11-10-2020.zip"           : nsclc/annot/AIM_files_updated-11-10-2020.zip
+"E:\\EVBioX-Lung\\data\\manifest-1622561851074\\NSCLCR01Radiogenomic_DATA_LABELS_2018-05-22_1500-shifted.csv": nsclc/meta/clinical_labels.csv
+"E:\\EVBioX-Lung\\data\\manifest-1622561851074\\GSE103584_R01_NSCLC_RNAseq.txt.gz"          : nsclc/rnaseq/GSE103584_R01_NSCLC_RNAseq.txt.gz
+
+# ========= TCGA LUAD ==========
+# ========= TCGA-LUAD ==========
+"E:\\EVBioX-Lung\\data\\TCGA-LUDA\\biospecimen.project-tcga-luad.2025-06-27.tar.gz"         : tcga_luad/biospecimen.tar.gz
+"E:\\EVBioX-Lung\\data\\TCGA-LUDA\\clinical.project-tcga-luad.2025-06-27.tar.gz"            : tcga_luad/clinical.tar.gz
+"E:\\EVBioX-Lung\\data\\TCGA-LUDA\\gdc_manifest.2025-06-27.161923.txt"                      : tcga_luad/manifest.txt
+
+# ========= TCGA-LUSC ==========
+"E:\\EVBioX-Lung\\data\\TCGA-LUSC\\biospecimen.project-tcga-lusc.2025-06-27.tar.gz"         : tcga_lusc/biospecimen.tar.gz
+"E:\\EVBioX-Lung\\data\\TCGA-LUSC\\clinical.project-tcga-lusc.2025-06-27.tar.gz"            : tcga_lusc/clinical.tar.gz
+"E:\\EVBioX-Lung\\data\\TCGA-LUSC\\gdc_manifest.2025-06-27.162034.txt"                      : tcga_lusc/manifest.txt
+
+
