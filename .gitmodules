@@ -1,3 +1,0 @@
-[submodule "externals/lidc_preproc"]
-	path = externals/lidc_preproc
-	url = https://github.com/jaeho3690/LIDC-IDRI-Preprocessing.git
