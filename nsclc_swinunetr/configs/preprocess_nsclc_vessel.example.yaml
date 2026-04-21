@@ -1,0 +1,16 @@
+﻿preprocess:
+  raw_nifti_root: "${PROJECT_ROOT}/data/raw/nifti/nsclc"
+  preprocess_root: "${PROJECT_ROOT}/data/processed/nsclc"
+  target_spacing: [1.0, 1.0, 1.0]
+  hu_window: [-1000, 400]
+  enable_crop: true
+  crop_margin: 20
+  reuse_preprocessed: false
+vessel:
+  enable_lung_vessels: true
+  enable_heart_pa: true
+  fast: false
+  overwrite: false
+  qc_subdir: "figs"
+  qc_slices: 6
+  totalseg_cmd: "TotalSegmentator"

@@ -1,0 +1,5 @@
+﻿audit:
+  roi_root: "${PROJECT_ROOT}/data/roi/nsclc"
+  out_csv: "${PROJECT_ROOT}/datalist/audit_roi.csv"
+  cube_size: 96
+  num_workers: 4

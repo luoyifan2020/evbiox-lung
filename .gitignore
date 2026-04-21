@@ -1,0 +1,35 @@
+﻿__pycache__/
+*.py[cod]
+.ipynb_checkpoints/
+.venv/
+venv/
+env/
+.vscode/
+.idea/
+logs/
+*.log
+tmp/
+temp/
+cache/
+node_modules/
+
+# Excluded heavy/sensitive data
+data/raw/
+data/processed/
+data/raw_data/
+outputs/
+.git/
+
+# Model artifacts
+*.pth
+*.pt
+*.ckpt
+*.onnx
+
+# Arrays and temp artifacts
+*.npy
+*.npz
+
+# Archives
+*.zip
+*.7z

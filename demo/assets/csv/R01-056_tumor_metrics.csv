@@ -1,0 +1,2 @@
+pid,dice,gt_tumor_vol_cm3,pred_tumor_vol_cm3,lung_vol_cm3,gt_tumor_lung_ratio,pred_tumor_lung_ratio
+R01-056,0.7420906390725304,28.927,20.564,4796.868,0.006030393164873413,0.004286963910618345

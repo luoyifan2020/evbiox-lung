@@ -1,0 +1,11 @@
+﻿mm_dir: "${PROJECT_ROOT}/outputs/mm_inputs"
+oof_dir: "${PROJECT_ROOT}/outputs/risk_gmoe"
+out_dir: "${PROJECT_ROOT}/outputs/fusion_report"
+use: ["clin", "img", "rad", "rna_gene", "rna_pathway", "rna_ssgsea"]
+oof_split: ["val"]
+skip_plots: false
+eval_ibs: true
+bootstrap:
+  enabled: true
+  n: 500
+  seed: 2025

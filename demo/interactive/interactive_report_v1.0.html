@@ -1,0 +1,849 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EVBioX-Lung | V16 Intelligent Workstation</title>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        slate: { 850: '#151e2e', 900: '#0f172a', 950: '#020617' },
+                        teal: { 450: '#14b8a6', 900: '#134e4a', 950: '#042f2e' },
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                        mono: ['JetBrains Mono', 'monospace'],
+                    }
+                }
+            }
+        }
+    </script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    
+    <!-- Libraries -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation@2.1.0/dist/chartjs-plugin-annotation.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/STLLoader.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.0/papaparse.min.js"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+
+    <style>
+        body { background-color: #020617; color: #e2e8f0; font-family: 'Inter', sans-serif; overflow: hidden; }
+        
+        /* Tech Card System */
+        .tech-card {
+            background: rgba(30, 41, 59, 0.4);
+            border: 1px solid rgba(51, 65, 85, 0.5);
+            border-radius: 6px;
+            display: flex; flex-direction: column;
+            backdrop-filter: blur(4px);
+            min-height: 50px; /* Adjusted min height */
+            position: relative;
+        }
+        
+        /* Resizable Utilities */
+        .resize-y { resize: vertical; overflow: hidden; }
+        .resize-x { resize: horizontal; overflow: hidden; }
+        
+        .card-header {
+            padding: 5px 8px; 
+            border-bottom: 1px solid rgba(51, 65, 85, 0.5);
+            background: rgba(15, 23, 42, 0.8);
+            display: flex; justify-content: space-between; align-items: center;
+            flex-shrink: 0;
+            cursor: grab; /* Hint draggable if we implemented full drag, but here strictly for visual header */
+        }
+        .card-title { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: #94a3b8; }
+        .card-body { padding: 4px; position: relative; flex: 1; min-height: 0; overflow: auto; }
+
+        /* Card Accents */
+        .card-blue { border-top: 2px solid #3b82f6; }
+        .card-amber { border-top: 2px solid #f59e0b; }
+        .card-teal { border-top: 2px solid #14b8a6; }
+        .card-red { border-top: 2px solid #f43f5e; }
+        .card-emerald { border-top: 2px solid #10b981; }
+        
+        /* 3D Toolbar */
+        .imaris-btn {
+            transition: all 0.2s ease; fill: #94a3b8; background: rgba(15, 23, 42, 0.6);
+            border: 1px solid rgba(148, 163, 184, 0.2);
+        }
+        .imaris-btn:hover { fill: #fff; background: rgba(56, 189, 248, 0.2); border-color: rgba(56, 189, 248, 0.5); }
+        .imaris-btn.active { fill: #38bdf8; background: rgba(56, 189, 248, 0.15); border-color: #38bdf8; }
+
+        /* Scrollbar */
+        .custom-scrollbar::-webkit-scrollbar { width: 4px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: #0f172a; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #334155; border-radius: 2px; }
+
+        /* Glass Panel */
+        .glass-panel {
+            background: rgba(4, 47, 46, 0.1);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(20, 184, 166, 0.2);
+            border-radius: 6px;
+        }
+    </style>
+</head>
+<body class="h-screen w-screen flex flex-col bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-slate-900 to-slate-950">
+
+    <!-- Header -->
+    <header class="h-10 border-b border-gray-800 bg-slate-950/90 backdrop-blur-md flex items-center justify-between px-4 shrink-0 z-50">
+        <div class="flex items-center gap-4">
+            <div class="flex items-center gap-2">
+                <div class="w-6 h-6 bg-blue-500/10 rounded flex items-center justify-center border border-blue-500/20">
+                    <i data-lucide="dna" class="text-blue-400 w-4 h-4"></i>
+                </div>
+                <h1 class="font-bold text-sm tracking-wide text-gray-100">EVBioX <span class="text-blue-400 font-light">LUNG</span></h1>
+            </div>
+            
+            <!-- Patient Selector -->
+            <div class="flex items-center gap-2 bg-slate-900 border border-slate-700 rounded px-2 py-0.5">
+                <span class="text-[10px] text-gray-500 uppercase font-bold">Patient ID:</span>
+                <select id="patient-select" class="bg-transparent text-xs text-blue-400 font-mono focus:outline-none cursor-pointer" onchange="changePatient(this.value)">
+                    <option value="">-- WAITING --</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="flex items-center gap-3">
+            <div id="status-msg" class="text-[10px] font-mono text-blue-400 animate-pulse">SYSTEM READY</div>
+            <label class="cursor-pointer bg-blue-600 hover:bg-blue-500 text-white px-3 py-1 rounded-[2px] text-[10px] font-bold transition flex items-center gap-2 shadow-lg shadow-blue-500/20">
+                <i data-lucide="upload-cloud" class="w-3 h-3"></i>
+                LOAD DATA
+                <input type="file" id="file-upload" class="hidden" multiple accept=".csv,.stl">
+            </label>
+        </div>
+    </header>
+
+    <!-- Main Flex Layout -->
+    <main class="flex-1 flex gap-1 p-1 overflow-hidden">
+        
+        <!-- LEFT COLUMN: Resizable X -->
+        <aside class="w-1/6 min-w-[220px] max-w-[400px] flex flex-col gap-1 resize-x overflow-hidden pr-1 border-r border-transparent hover:border-slate-700/50 transition-colors">
+            <div class="flex-1 flex flex-col gap-1 overflow-y-auto custom-scrollbar pb-2">
+                
+                <!-- 1. Clinical Profile (Resizable Y) -->
+                <div class="tech-card card-blue shrink-0 resize-y h-48">
+                    <div class="card-header">
+                        <span class="card-title text-blue-400">Clinical Profile</span>
+                        <span id="match-status" class="text-[9px] font-bold px-1.5 py-0.5 rounded bg-slate-800 text-slate-500 border border-slate-700">WAITING</span>
+                    </div>
+                    <div class="card-body">
+                        <div class="grid grid-cols-[0.7fr,1.3fr] gap-y-1 text-[10px]" id="clinicalInfoGrid">
+                            <div class="text-slate-500">ID</div><div class="text-white font-mono text-right truncate" id="info-id">--</div>
+                            <div class="text-slate-500">Demog</div><div class="text-white text-right font-mono" id="info-agesex">--</div>
+                            <div class="text-slate-500">Ethnicity</div><div class="text-white text-right truncate" id="info-eth">--</div>
+                            <div class="text-slate-500">Weight</div><div class="text-white text-right font-mono" id="info-weight">--</div>
+                            <div class="text-slate-500">T Stage</div><div class="text-white text-right font-mono" id="info-tstage">--</div>
+                            <div class="text-slate-500">Smoker</div><div class="text-white text-right" id="info-smoke">--</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 2. Anatomy Layers (Full content, no scroll/resize) -->
+                <div class="tech-card shrink-0">
+                    <div class="card-header"><span class="card-title text-gray-400">Anatomy Layers</span></div>
+                    <div class="card-body !p-2">
+                        <div class="space-y-1" id="layer-controls">
+                            <div class="text-[9px] text-gray-600 text-center italic mt-4">Load STLs to view</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 3. Risk Assessment (Full content, no scroll/resize) -->
+                <div class="tech-card card-red shrink-0">
+                    <div class="card-header">
+                        <span class="card-title text-red-400">Risk Assessment</span>
+                    </div>
+                    <div class="card-body flex flex-col gap-1 min-h-[200px]">
+                        <!-- Gauge -->
+                        <div class="flex flex-col items-center justify-center pt-1 shrink-0">
+                            <div class="relative w-24 h-14">
+                                <canvas id="gaugeChart"></canvas>
+                                <div class="absolute inset-0 flex items-end justify-center pb-1">
+                                    <span id="risk-score-display" class="text-sm font-bold text-white font-mono">--</span>
+                                </div>
+                            </div>
+                            <div class="text-[8px] text-gray-500 uppercase tracking-wider">Risk Probability</div>
+                        </div>
+                        <!-- Horizontal Bar -->
+                        <div class="flex-1 relative w-full px-1 min-h-[100px]">
+                            <canvas id="weightBarChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 4. Key Drivers (Full content, no scroll/resize) -->
+                <div class="tech-card card-amber shrink-0">
+                    <div class="card-header">
+                        <span class="card-title text-amber-400">Key Drivers</span>
+                        <span class="text-[9px] text-slate-500">TOP 5 (GLOBAL)</span>
+                    </div>
+                    <div class="card-body !p-0">
+                        <div id="key-drivers-list" class="flex flex-col">
+                            <div class="text-[10px] text-slate-600 py-4 text-center italic">Awaiting SHAP Data</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 5. Risk Simulator (Resizable Y) -->
+                <div class="glass-panel p-3 shrink-0 resize-y h-auto overflow-hidden">
+                    <div class="flex items-center justify-between mb-2">
+                        <h3 class="text-[10px] font-bold text-teal-400 uppercase flex items-center gap-1">
+                            <span>⚡</span> Risk Simulator
+                        </h3>
+                        <span class="text-[8px] text-teal-600 bg-teal-950 px-1 rounded border border-teal-900">Interactive</span>
+                    </div>
+                    <p class="text-[9px] text-slate-500 mb-3 leading-tight">Adjust parameters to simulate risk:</p>
+                    <div class="space-y-3">
+                        <div>
+                            <label class="text-[9px] text-slate-400 block mb-1">Gene Expression (CD86)</label>
+                            <input type="range" min="0" max="100" value="75" class="w-full h-1 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-teal-500">
+                            <div class="flex justify-between text-[8px] text-slate-600 mt-1"><span>Low</span><span>High</span></div>
+                        </div>
+                        <div>
+                            <label class="text-[9px] text-slate-400 block mb-1">Intervention</label>
+                            <select class="w-full bg-slate-800 border border-slate-700 text-[9px] text-slate-300 rounded p-1 focus:border-teal-500 outline-none">
+                                <option>Standard Care</option>
+                                <option>Immunotherapy</option>
+                                <option>Adjuvant Chemo</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </aside>
+
+        <!-- MIDDLE COLUMN -->
+        <section class="flex-1 flex flex-col gap-1 overflow-hidden min-w-[300px]">
+            
+            <!-- 3D Viewport (Flexible Height) -->
+            <div class="tech-card flex-1 relative group overflow-hidden bg-gradient-to-b from-slate-900 to-black rounded border-0" id="viewport-container">
+                <div class="absolute top-2 left-2 z-10 text-[9px] font-mono text-slate-600">WEBGL2 ENGINE</div>
+                <div id="three-canvas" class="w-full h-full"></div>
+                <!-- 3D Toolbar -->
+                <div class="absolute bottom-4 left-1/2 transform -translate-x-1/2 flex items-center gap-2 bg-slate-900/90 backdrop-blur rounded px-2 py-1 border border-slate-700 shadow-xl z-20">
+                    <button onclick="resetView()" class="imaris-btn p-1 rounded" title="Reset"><i data-lucide="rotate-ccw" class="w-3 h-3"></i></button>
+                    <div class="w-px h-3 bg-slate-700"></div>
+                    <button onclick="toggleSpin()" class="imaris-btn p-1 rounded"><i data-lucide="refresh-cw" class="w-3 h-3"></i></button>
+                    <button onclick="toggleGrid()" id="btn-grid" class="imaris-btn p-1 rounded active"><i data-lucide="grid" class="w-3 h-3"></i></button>
+                    <div class="w-px h-3 bg-slate-700"></div>
+                    <button onclick="toggleGhostLung()" id="btn-ghost" class="imaris-btn p-1 rounded"><i data-lucide="ghost" class="w-3 h-3"></i></button>
+                    <button onclick="randomizeColors()" class="imaris-btn p-1 rounded"><i data-lucide="palette" class="w-3 h-3"></i></button>
+                </div>
+            </div>
+
+            <!-- NEW: Tumor Metrics (Resizable Y) -->
+            <div class="tech-card card-emerald shrink-0 resize-y h-40 overflow-hidden" id="metrics-panel">
+                <div class="card-header">
+                    <span class="card-title text-emerald-400">Tumor Metrics Analysis</span>
+                    <span class="text-[9px] text-slate-500 font-mono" id="metrics-pid">--</span>
+                </div>
+                <div class="card-body p-0 flex items-center justify-center">
+                    <div class="w-full grid grid-cols-4 gap-2 px-4 text-center" id="metrics-grid">
+                        <!-- Metrics injected here -->
+                        <div class="col-span-4 text-[10px] text-slate-600 italic">Load 'tumor_metrics.csv' to view data</div>
+                    </div>
+                </div>
+            </div>
+
+        </section>
+
+        <!-- RIGHT COLUMN: Resizable X -->
+        <aside class="w-1/5 min-w-[220px] max-w-[400px] flex flex-col gap-1 resize-x overflow-hidden pl-1 border-l border-transparent hover:border-slate-700/50 transition-colors">
+            
+            <!-- Top: Contribution (Resizable Y) -->
+            <div id="panel-right-top" class="flex flex-col overflow-hidden h-1/2 resize-y min-h-[200px]">
+                <div class="tech-card h-full">
+                    <div class="card-header !bg-[#0b1121]">
+                        <div class="flex flex-col gap-2 w-full">
+                            <div class="flex justify-between items-center w-full">
+                                <span class="card-title">Contribution Analysis</span>
+                                <div class="flex items-center gap-2">
+                                    <span class="text-[9px] text-slate-500">TOP K</span>
+                                    <div class="w-12">
+                                        <input type="range" min="5" max="20" value="15" step="1" 
+                                               class="w-full h-1 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-blue-500"
+                                               oninput="updateTopK(this.value)">
+                                    </div>
+                                    <span id="topKVal" class="text-[9px] text-white w-4">15</span>
+                                </div>
+                            </div>
+                            <div class="flex flex-wrap gap-1" id="shap-buttons">
+                                <button onclick="setShapMode('global')" class="px-2 py-0.5 text-[9px] font-bold text-white bg-blue-600 rounded" id="btn-global">ALL</button>
+                                <button onclick="setShapMode('clin')" class="px-2 py-0.5 text-[9px] text-slate-500 border border-slate-700 rounded hover:text-white" id="btn-clin">CLIN</button>
+                                <button onclick="setShapMode('rad')" class="px-2 py-0.5 text-[9px] text-slate-500 border border-slate-700 rounded hover:text-white" id="btn-rad">RAD</button>
+                                <button onclick="setShapMode('rna_gene')" class="px-2 py-0.5 text-[9px] text-slate-500 border border-slate-700 rounded hover:text-white" id="btn-rna_gene">GENE</button>
+                                <button onclick="setShapMode('rna_pathway')" class="px-2 py-0.5 text-[9px] text-slate-500 border border-slate-700 rounded hover:text-white" id="btn-rna_pathway">PATH</button>
+                                <button onclick="setShapMode('rna_ssgsea')" class="px-2 py-0.5 text-[9px] text-slate-500 border border-slate-700 rounded hover:text-white" id="btn-rna_ssgsea">ssGSEA</button>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <div class="w-full h-full relative" id="shap-container">
+                            <canvas id="shapChart"></canvas>
+                        </div>
+                        <div id="shap-msg" class="absolute inset-0 flex items-center justify-center text-[10px] text-gray-500 pointer-events-none hidden"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Bottom: Charts (Resizable Y) -->
+            <div id="panel-right-bottom" class="flex flex-col gap-1 overflow-hidden h-1/2">
+                <div id="rb-violin" class="flex-1 overflow-hidden min-h-[100px] resize-y">
+                    <div class="tech-card !border-t-slate-500 h-full">
+                        <div class="card-header py-1 min-h-[24px]"><span class="card-title">Population Position</span></div>
+                        <div class="card-body p-2"><div class="w-full h-full relative"><canvas id="violinChart"></canvas></div></div>
+                    </div>
+                </div>
+                <div id="rb-km" class="flex-1 overflow-hidden min-h-[100px] resize-y">
+                    <div class="tech-card card-teal h-full">
+                        <div class="card-header py-1 min-h-[24px]">
+                            <span class="card-title text-teal-400">Survival Analysis</span>
+                            <span id="km-label" class="text-[9px] font-mono text-teal-500">--</span>
+                        </div>
+                        <div class="card-body p-2">
+                             <div class="w-full h-full relative"><canvas id="kmChart"></canvas></div>
+                             <div id="km-msg" class="absolute inset-0 flex items-center justify-center text-[9px] text-gray-500 pointer-events-none">Load 'km_curves.csv'</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </aside>
+
+    </main>
+
+    <script>
+        // --- Config ---
+        const MOD_COLORS = { 'w_clin': '#3b82f6', 'w_img': '#10b981', 'w_rad': '#06b6d4', 'w_rna_gene': '#8b5cf6', 'w_rna_pathway': '#ec4899', 'w_rna_ssgsea': '#f59e0b', 'w_fused17': '#6366f1' };
+        const MOD_LABELS = { 'w_clin': 'CLIN', 'w_img': 'IMG', 'w_rad': 'RAD', 'w_rna_gene': 'GENE', 'w_rna_pathway': 'PATH', 'w_rna_ssgsea': 'ssGSEA', 'w_fused17': 'FUSED' };
+
+        // --- State ---
+        let scene, camera, renderer, controls, gridHelper;
+        let groups = {
+            'real': { name: 'Real Tumor', color: 0xef4444, keywords: ['real', 'gt', 'st'], objects: [] },
+            'pred': { name: 'Pred Tumor', color: 0xeab308, keywords: ['pred'], objects: [] },
+            'heart': { name: 'Heart', color: 0xa855f7, keywords: ['heart'], objects: [] },
+            'lung': { name: 'Lung', color: 0x22c55e, keywords: ['lung'], objects: [] },
+            'vessel': { name: 'Vessel', color: 0x3b82f6, keywords: ['vessel', 'vein', 'artery'], objects: [] }
+        };
+        
+        let dataStore = { 
+            main: null, clinical: null, km: null, metrics: null,
+            details: {} // { 'R01-004': { ssgsea:[], pathway:[], ... }, ... }
+        };
+        let currentPid = null;
+        let shapMode = 'global';
+        let shapTopK = 15;
+        let charts = { gauge: null, weightBar: null, shap: null, violin: null, km: null };
+
+        // --- Init ---
+        document.addEventListener('DOMContentLoaded', () => { initThreeJS(); lucide.createIcons(); });
+
+        // --- File Handling ---
+        document.getElementById('file-upload').addEventListener('change', (e) => {
+            const files = Array.from(e.target.files);
+            if (!files.length) return;
+            resetView();
+            document.getElementById('status-msg').innerText = `READING ${files.length} FILES...`;
+
+            let csvs = files.filter(f => f.name.toLowerCase().endsWith('.csv'));
+            let stls = files.filter(f => f.name.toLowerCase().endsWith('.stl'));
+
+            let parsed = 0;
+            if (csvs.length === 0 && stls.length > 0) {
+                 document.getElementById('status-msg').innerText = `LOADED ${stls.length} MODELS`;
+                 loadSTLs(stls);
+                 return;
+            }
+
+            csvs.forEach(file => {
+                Papa.parse(file, {
+                    header: true, dynamicTyping: true, skipEmptyLines: true,
+                    complete: (res) => {
+                        storeCSV(file.name, res.data, res.meta.fields);
+                        parsed++;
+                        if (parsed === csvs.length) finalizeLoad(stls);
+                    }
+                });
+            });
+        });
+
+        function storeCSV(name, data, headers) {
+            if (!headers) return;
+            const h = headers.map(x => x.toLowerCase().trim());
+            const n = name.toLowerCase();
+
+            // Main Risk File
+            if (h.includes('pid') && h.includes('risk') && h.some(x => x.startsWith('w_'))) dataStore.main = data;
+            // Clinical File
+            else if (h.includes('case id') && (h.includes('age') || h.includes('age at histological diagnosis'))) dataStore.clinical = data;
+            // KM File
+            else if (h.includes('survival') && h.includes('time') && h.includes('group')) dataStore.km = data;
+            // Tumor Metrics
+            else if (h.includes('dice') && h.includes('gt_tumor_vol_cm3')) dataStore.metrics = data;
+            // Detail Contribution Files
+            else {
+                const pidMatch = name.match(/R01-\d{3}/i);
+                if (pidMatch) {
+                    const pid = pidMatch[0].toUpperCase();
+                    if (!dataStore.details[pid]) dataStore.details[pid] = {};
+                    if (n.includes('ssgsea')) dataStore.details[pid].ssgsea = data;
+                    else if (n.includes('pathway')) dataStore.details[pid].pathway = data;
+                    else if (n.includes('gene')) dataStore.details[pid].gene = data;
+                    else if (n.includes('rad')) dataStore.details[pid].rad = data;
+                    else if (n.includes('clin')) dataStore.details[pid].clin = data;
+                }
+            }
+        }
+
+        function finalizeLoad(stls) {
+            if (stls && stls.length > 0) loadSTLs(stls);
+
+            // Auto-detect Patient ID logic
+            let detectedPid = null;
+            // 1. Check Metrics file first
+            if (dataStore.metrics && dataStore.metrics.length) detectedPid = dataStore.metrics[0].pid;
+            // 2. Check Detail files
+            if (!detectedPid) {
+                const keys = Object.keys(dataStore.details);
+                if (keys.length > 0) detectedPid = keys[0];
+            }
+            // 3. Fallback to Main file first row
+            if (!detectedPid && dataStore.main && dataStore.main.length) detectedPid = dataStore.main[0].pid;
+
+            // Populate Selector
+            const select = document.getElementById('patient-select');
+            select.innerHTML = '';
+            if (dataStore.main) {
+                dataStore.main.forEach(r => {
+                    if(r.pid) {
+                        const opt = document.createElement('option');
+                        opt.value = r.pid;
+                        opt.text = r.pid;
+                        select.appendChild(opt);
+                    }
+                });
+            } else if (detectedPid) {
+                // If only metrics/details loaded but no risk_groups, add detected ID
+                const opt = document.createElement('option');
+                opt.value = detectedPid; opt.text = detectedPid;
+                select.appendChild(opt);
+            }
+
+            if (detectedPid) {
+                currentPid = detectedPid;
+                select.value = currentPid;
+                loadPatient(currentPid);
+                document.getElementById('status-msg').innerText = `ACTIVE: ${currentPid}`;
+            } else {
+                document.getElementById('status-msg').innerText = "NO DATA";
+            }
+        }
+
+        window.changePatient = function(pid) {
+            if(!pid) return;
+            currentPid = pid;
+            loadPatient(pid);
+        }
+
+        function loadPatient(pid) {
+            updateAllUI();
+        }
+
+        function updateAllUI() {
+            updateClinicalUI();
+            updateRiskUI();
+            updateViolinUI();
+            updateMetricsUI(); // New
+            setShapMode('global'); 
+            if(dataStore.km) updateKmUI();
+        }
+
+        // --- NEW: Tumor Metrics UI ---
+        function updateMetricsUI() {
+            const grid = document.getElementById('metrics-grid');
+            document.getElementById('metrics-pid').innerText = currentPid || '--';
+            
+            let data = null;
+            if (dataStore.metrics) {
+                data = dataStore.metrics.find(r => r.pid === currentPid);
+            }
+
+            if (data) {
+                const items = [
+                    { label: "Dice Score", val: data.dice?.toFixed(4), color: "text-emerald-400" },
+                    { label: "GT Vol (cm³)", val: data.gt_tumor_vol_cm3?.toFixed(2), color: "text-blue-400" },
+                    { label: "Pred Vol (cm³)", val: data.pred_tumor_vol_cm3?.toFixed(2), color: "text-yellow-400" },
+                    { label: "Tumor/Lung Ratio", val: (data.gt_tumor_lung_ratio*100)?.toFixed(3) + '%', color: "text-purple-400" }
+                ];
+                
+                grid.innerHTML = items.map(i => `
+                    <div class="bg-slate-800/50 rounded p-2 flex flex-col justify-center border border-slate-700/50">
+                        <div class="text-[8px] text-slate-500 uppercase tracking-wider mb-1">${i.label}</div>
+                        <div class="text-lg font-mono font-bold ${i.color}">${i.val}</div>
+                    </div>
+                `).join('');
+            } else {
+                grid.innerHTML = `<div class="col-span-4 text-[10px] text-slate-600 italic py-4">No metrics found for ${currentPid}</div>`;
+            }
+        }
+
+        // --- Existing Modules ---
+
+        function updateClinicalUI() {
+            document.getElementById('info-id').innerText = currentPid || '--';
+            document.getElementById('match-status').innerText = dataStore.clinical ? "MATCHED" : "NO DATA";
+            document.getElementById('match-status').className = `text-[9px] font-bold px-1.5 py-0.5 rounded border ${dataStore.clinical ? 'bg-emerald-900/30 text-emerald-400 border-emerald-800' : 'bg-slate-800 text-slate-500 border-slate-700'}`;
+            if (dataStore.clinical) {
+                const rec = dataStore.clinical.find(r => r['Case ID'] === currentPid);
+                if (rec) {
+                    document.getElementById('info-agesex').innerText = `${rec['Age']||rec['Age at Histological Diagnosis']} / ${rec['Gender']||rec['Sex']}`;
+                    document.getElementById('info-eth').innerText = rec['Ethnicity'] || '--';
+                    document.getElementById('info-weight').innerText = rec['Weight (lbs)'] || '--';
+                    document.getElementById('info-tstage').innerText = rec['Pathological T stage'] || '--';
+                    document.getElementById('info-smoke').innerText = rec['Smoking status'] || '--';
+                } else {
+                    ['info-agesex','info-eth','info-weight','info-tstage','info-smoke'].forEach(id=>document.getElementById(id).innerText = '--');
+                }
+            }
+        }
+
+        function updateRiskUI() {
+            const p = dataStore.main ? dataStore.main.find(x => x.pid === currentPid) : null;
+            if (!p) {
+                document.getElementById('risk-score-display').innerText = '--';
+                if(charts.gauge) charts.gauge.destroy();
+                if(charts.weightBar) charts.weightBar.destroy();
+                return;
+            }
+
+            // Gauge
+            const risk = p.risk;
+            let gVal = 0.5 + (risk * 0.5); gVal = Math.max(0, Math.min(1, gVal));
+            document.getElementById('risk-score-display').innerText = risk.toFixed(3);
+            const rColor = risk > 0.5 ? '#f43f5e' : (risk > 0 ? '#fbbf24' : '#34d399');
+            document.getElementById('risk-score-display').style.color = rColor;
+            
+            if(charts.gauge) charts.gauge.destroy();
+            charts.gauge = new Chart(document.getElementById('gaugeChart').getContext('2d'), {
+                type: 'doughnut',
+                data: { datasets: [{ data: [gVal, 1-gVal], backgroundColor: [rColor, '#1e293b'], borderWidth: 0, circumference: 180, rotation: 270, cutout: '85%' }] },
+                options: { responsive: true, maintainAspectRatio: false, plugins: { tooltip: {enabled:false} } }
+            });
+
+            // Horizontal Bar Chart
+            const wKeys = ['w_clin', 'w_img', 'w_rad', 'w_rna_gene', 'w_rna_pathway', 'w_rna_ssgsea'];
+            const presentKeys = wKeys.filter(k => p.hasOwnProperty(k));
+            
+            if(charts.weightBar) charts.weightBar.destroy();
+            charts.weightBar = new Chart(document.getElementById('weightBarChart').getContext('2d'), {
+                type: 'bar',
+                data: {
+                    labels: presentKeys.map(k => MOD_LABELS[k]),
+                    datasets: [{
+                        data: presentKeys.map(k => p[k]),
+                        backgroundColor: presentKeys.map(k => MOD_COLORS[k] || '#64748b'),
+                        borderRadius: 2,
+                        barThickness: 10
+                    }]
+                },
+                options: {
+                    indexAxis: 'y', // Horizontal
+                    responsive: true, maintainAspectRatio: false,
+                    plugins: { legend: {display:false} },
+                    scales: { 
+                        x: { 
+                            grid:{color:'#334155'}, 
+                            ticks:{color:'#94a3b8', font:{size:8}},
+                            title: { display: true, text: 'rweight', color: '#64748b', font: {size: 8}}
+                        }, 
+                        y: { 
+                            grid:{display:false}, 
+                            ticks:{color:'#cbd5e1', font:{size:9, weight:'bold'}} 
+                        } 
+                    }
+                }
+            });
+        }
+
+        window.setShapMode = function(mode) {
+            shapMode = mode;
+            const btns = document.querySelectorAll('#shap-buttons button');
+            btns.forEach(b => {
+                if (b.id === 'btn-' + mode.replace('global','global').replace('rna_','')) { 
+                     b.classList.remove('text-slate-500', 'border-slate-700');
+                     b.classList.add('bg-blue-600', 'text-white', 'border-blue-600');
+                } else if (mode === 'global' && b.id === 'btn-global') {
+                     b.classList.add('bg-blue-600', 'text-white');
+                } else {
+                     b.classList.remove('bg-blue-600', 'text-white', 'border-blue-600');
+                     b.classList.add('text-slate-500', 'border-slate-700');
+                }
+            });
+            renderShap();
+        }
+        
+        window.updateTopK = function(v) {
+            shapTopK = parseInt(v);
+            document.getElementById('topKVal').innerText = v;
+            renderShap();
+        }
+
+        function getAggregateData(pid) {
+            let data = [];
+            const pDetails = dataStore.details[pid];
+            if (!pDetails) return [];
+            if (pDetails.ssgsea) pDetails.ssgsea.forEach(r => data.push({ label: r.feature, val: r.beta_z, source: 'ssGSEA' }));
+            if (pDetails.pathway) pDetails.pathway.forEach(r => data.push({ label: r.feature.replace(/REACTOME_|KEGG_/g,''), val: r.beta_z, source: 'PATH' }));
+            if (pDetails.gene) pDetails.gene.forEach(r => data.push({ label: r.feature, val: r.beta_z, source: 'GENE' }));
+            if (pDetails.rad) pDetails.rad.forEach(r => data.push({ label: r.feature, val: r.beta_z, source: 'RAD' }));
+            if (pDetails.clin) pDetails.clin.forEach(r => data.push({ label: r.feature, val: r.beta_z, source: 'CLIN' }));
+            return data;
+        }
+
+        function renderShap() {
+            const msg = document.getElementById('shap-msg');
+            msg.classList.add('hidden');
+            let data = [];
+            const pDetails = dataStore.details[currentPid];
+
+            if (!pDetails) {
+                msg.innerText = `NO DETAIL DATA FOR ${currentPid}`;
+                msg.classList.remove('hidden');
+                if(charts.shap) charts.shap.destroy();
+                updateKeyDrivers([]);
+                return;
+            }
+
+            if (shapMode === 'global') {
+                data = getAggregateData(currentPid);
+            } else {
+                let source = null;
+                if (shapMode === 'rna_ssgsea') source = pDetails.ssgsea;
+                else if (shapMode === 'rna_pathway') source = pDetails.pathway;
+                else if (shapMode === 'rna_gene') source = pDetails.gene;
+                else if (shapMode === 'rad') source = pDetails.rad;
+                else if (shapMode === 'clin') source = pDetails.clin;
+
+                if (source) {
+                    source.forEach(r => {
+                        let lbl = r.feature || r.Feature;
+                        if (shapMode === 'rna_pathway') lbl = lbl.replace(/REACTOME_|KEGG_/g,'');
+                        data.push({ label: lbl, val: r.beta_z || r.Contribution });
+                    });
+                }
+            }
+
+            if (!data.length) {
+                msg.innerText = "NO DATA FOR THIS MODE";
+                msg.classList.remove('hidden');
+                if(charts.shap) charts.shap.destroy();
+                if (shapMode === 'global') updateKeyDrivers([]); 
+                return;
+            }
+
+            data.sort((a,b) => Math.abs(b.val) - Math.abs(a.val));
+            const viewData = data.slice(0, shapTopK);
+            
+            if(charts.shap) charts.shap.destroy();
+            charts.shap = new Chart(document.getElementById('shapChart').getContext('2d'), {
+                type: 'bar',
+                data: {
+                    labels: viewData.map(d => d.label), 
+                    datasets: [{
+                        data: viewData.map(d => d.val),
+                        backgroundColor: viewData.map(d => d.val > 0 ? '#ef4444' : '#3b82f6'),
+                        borderRadius: 2
+                    }]
+                },
+                options: {
+                    indexAxis: 'y', 
+                    responsive: true, maintainAspectRatio: false,
+                    plugins: { legend: {display:false}, tooltip: {callbacks:{title: c=>data[c[0].dataIndex].label}} },
+                    scales: {
+                        x: { grid:{color:'#334155'}, ticks:{color:'#94a3b8', font:{size:8}} },
+                        y: { grid:{display:false}, ticks:{color:'#cbd5e1', font:{size:8}, autoSkip: false} }
+                    }
+                }
+            });
+
+            if (shapMode === 'global') {
+                updateKeyDrivers(data);
+            } else {
+                const globalData = getAggregateData(currentPid);
+                globalData.sort((a,b) => Math.abs(b.val) - Math.abs(a.val));
+                updateKeyDrivers(globalData);
+            }
+        }
+
+        function updateKeyDrivers(data) {
+            const list = document.getElementById('key-drivers-list');
+            list.innerHTML = '';
+            
+            if (!data || data.length === 0) {
+                list.innerHTML = '<div class="text-[10px] text-slate-600 py-4 text-center italic">No Contribution Data</div>';
+                return;
+            }
+
+            data.slice(0, 5).forEach(d => {
+                const div = document.createElement('div');
+                div.className = "flex justify-between items-center p-2 border-b border-slate-700/50 hover:bg-slate-800/30";
+                div.innerHTML = `
+                    <div class="flex flex-col flex-1 mr-2 min-w-0">
+                        <span class="text-[8px] text-slate-200 font-medium break-words leading-tight" title="${d.label}">${d.label}</span>
+                        ${d.source ? `<span class="text-[7px] text-slate-500">${d.source}</span>` : ''}
+                    </div>
+                    <span class="font-mono font-bold text-[9px] whitespace-nowrap ${d.val>0?'text-red-400':'text-blue-400'}">${d.val.toFixed(3)}</span>
+                `;
+                list.appendChild(div);
+            });
+        }
+
+        // 4. Violin
+        function updateViolinUI() {
+            if (!dataStore.main) return;
+            const p = dataStore.main.find(x => x.pid === currentPid);
+            const ctx = document.getElementById('violinChart').getContext('2d');
+            const dataset = dataStore.main.map(r => ({ x: Math.random()*0.6+0.2, y: r.risk }));
+            const myPt = p ? [{ x: 0.5, y: p.risk }] : [];
+
+            if(charts.violin) charts.violin.destroy();
+            charts.violin = new Chart(ctx, {
+                type: 'scatter',
+                data: {
+                    datasets: [
+                        { data: dataset, backgroundColor: 'rgba(59, 130, 246, 0.2)', pointRadius: 2, borderWidth:0 },
+                        { data: myPt, backgroundColor: '#f43f5e', pointRadius: 5, pointBorderColor: '#fff', pointBorderWidth: 1.5 }
+                    ]
+                },
+                options: {
+                    responsive: true, maintainAspectRatio: false,
+                    scales: { x:{display:false, min:0, max:1}, y:{grid:{color:'#334155'}, ticks:{color:'#94a3b8', font:{size:8}}} },
+                    plugins: { legend:{display:false} }
+                }
+            });
+        }
+
+        // 5. KM
+        function updateKmUI() {
+            if (!dataStore.km) return;
+            document.getElementById('km-msg').classList.add('hidden');
+            const groups = {};
+            dataStore.km.forEach(r => {
+                if(!groups[r.group]) groups[r.group] = [];
+                groups[r.group].push({x: r.time, y: r.survival});
+            });
+            const datasets = Object.keys(groups).map((g,i) => {
+                let color = '#34d399';
+                if(g.includes('G2')) color = '#facc15'; // Yellow G2
+                else if(g.includes('G1')) color = '#34d399';
+                else color = '#f43f5e';
+
+                return {
+                    label: g, data: groups[g].sort((a,b)=>a.x-b.x),
+                    borderColor: color, borderWidth:2, pointRadius:0, stepped:true
+                };
+            });
+            
+            let pTime = 0;
+            if (dataStore.main && currentPid) {
+                const p = dataStore.main.find(x => x.pid === currentPid);
+                if(p) pTime = p.time;
+            }
+            if(pTime) document.getElementById('km-label').innerText = `${pTime.toFixed(0)} Days`;
+
+            if(charts.km) charts.km.destroy();
+            charts.km = new Chart(document.getElementById('kmChart').getContext('2d'), {
+                type: 'line', data: { datasets },
+                options: {
+                    responsive: true, maintainAspectRatio: false,
+                    scales: {
+                        x: { type:'linear', grid:{display:false}, ticks:{color:'#94a3b8', font:{size:8}} },
+                        y: { grid:{color:'#334155'}, ticks:{color:'#94a3b8', font:{size:8}}, min:0, max:1 }
+                    },
+                    plugins: { 
+                        legend: { labels:{color:'#cbd5e1', font:{size:9}, boxWidth:8} },
+                        annotation: pTime ? { annotations: { line1: { type:'line', xMin:pTime, xMax:pTime, borderColor:'white', borderWidth:1, borderDash:[4,4] } } } : {}
+                    }
+                }
+            });
+        }
+
+        // --- 3D Engine ---
+        function initThreeJS() {
+            const container = document.getElementById('three-canvas');
+            scene = new THREE.Scene();
+            renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+            renderer.setSize(container.clientWidth, container.clientHeight);
+            renderer.setPixelRatio(window.devicePixelRatio);
+            container.appendChild(renderer.domElement);
+            camera = new THREE.PerspectiveCamera(45, container.clientWidth / container.clientHeight, 0.1, 1000);
+            camera.position.set(150, 150, 200);
+            const amb = new THREE.AmbientLight(0x404040, 2); scene.add(amb);
+            const dir = new THREE.DirectionalLight(0xffffff, 1.5); dir.position.set(50, 100, 50); scene.add(dir);
+            gridHelper = new THREE.GridHelper(300, 30, 0x1e293b, 0x0f172a); scene.add(gridHelper);
+            controls = new THREE.OrbitControls(camera, renderer.domElement); controls.enableDamping = true;
+            animate();
+            window.addEventListener('resize', () => {
+                camera.aspect = container.clientWidth / container.clientHeight;
+                camera.updateProjectionMatrix();
+                renderer.setSize(container.clientWidth, container.clientHeight);
+            });
+        }
+        function animate() { requestAnimationFrame(animate); controls.update(); renderer.render(scene, camera); }
+        
+        function loadSTLs(files) {
+            const loader = new THREE.STLLoader(); let loaded = 0; const box = new THREE.Box3();
+            files.forEach(f => {
+                const url = URL.createObjectURL(f); const n = f.name.toLowerCase();
+                let grp = null; 
+                if(n.includes('heart')) grp = 'heart';
+                else if(n.includes('vessel') || n.includes('vein') || n.includes('artery')) grp = 'vessel';
+                else if(n.includes('lung')) grp = 'lung';
+                else if(n.includes('pred')) grp = 'pred';
+                else if(n.includes('real') || n.includes('gt') || n.includes('st')) grp = 'real';
+
+                if(grp) {
+                    loader.load(url, (g) => {
+                        g.computeVertexNormals();
+                        const m = new THREE.Mesh(g, new THREE.MeshPhongMaterial({ color: groups[grp].color, specular: 0x111111, shininess: 50 }));
+                        groups[grp].objects.push(m); scene.add(m); box.expandByObject(m); loaded++;
+                        if(loaded === files.length) {
+                            const c = box.getCenter(new THREE.Vector3()); controls.target.copy(c);
+                            const s = box.getSize(new THREE.Vector3()); const max = Math.max(s.x, s.y, s.z);
+                            camera.position.set(c.x+max, c.y+max, c.z+max); renderLayerControls();
+                        }
+                    });
+                } else loaded++;
+            });
+        }
+        function renderLayerControls() {
+            const c = document.getElementById('layer-controls'); c.innerHTML = '';
+            const order = ['lung','real','pred','heart','vessel'];
+            order.forEach(k => {
+                const g = groups[k]; if(!g.objects.length) return;
+                const d = document.createElement('div');
+                d.className = "flex justify-between items-center p-1.5 rounded bg-slate-800/50 border-l-2 cursor-pointer hover:bg-slate-700/50 transition";
+                d.style.borderLeftColor = '#' + g.color.toString(16).padStart(6,'0');
+                d.innerHTML = `<span class="text-[9px] text-gray-300">${g.name}</span><span class="text-[9px] text-gray-500">${g.objects.length}</span>`;
+                d.onclick = () => { const v = !g.objects[0].visible; g.objects.forEach(o => o.visible=v); d.style.opacity = v?1:0.4; };
+                c.appendChild(d);
+            });
+        }
+        window.resetView = function() { Object.values(groups).forEach(g => { g.objects.forEach(o => { scene.remove(o); o.geometry.dispose(); }); g.objects=[]; }); document.getElementById('file-upload').value = ''; }
+        window.toggleSpin = () => controls.autoRotate = !controls.autoRotate;
+        window.toggleGrid = () => { gridHelper.visible = !gridHelper.visible; document.getElementById('btn-grid').classList.toggle('active'); };
+        window.toggleGhostLung = () => { const b = document.getElementById('btn-ghost'); b.classList.toggle('active'); groups.lung.objects.forEach(o => { o.material.transparent = b.classList.contains('active'); o.material.opacity = b.classList.contains('active')?0.2:1; o.material.depthWrite = !b.classList.contains('active'); }); }
+        window.randomizeColors = () => Object.values(groups).forEach(g => g.objects.forEach(o => o.material.color.setHex(g.color)));
+    </script>
+</body>
+</html>

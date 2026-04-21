@@ -1,0 +1,23 @@
+﻿name: evbiox-lung-public
+channels:
+  - conda-forge
+  - pytorch
+dependencies:
+  - python=3.10
+  - pip
+  - numpy
+  - pandas
+  - pyyaml
+  - scipy
+  - matplotlib
+  - scikit-learn
+  - nibabel
+  - simpleitk
+  - pytorch
+  - torchvision
+  - pip:
+      - monai
+      - lifelines
+      - tqdm
+      - pydicom
+      - chartjs

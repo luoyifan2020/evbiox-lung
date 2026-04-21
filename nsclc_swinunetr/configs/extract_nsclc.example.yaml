@@ -1,0 +1,6 @@
+﻿extract:
+  raw_dicom_root: "${PROJECT_ROOT}/data/raw/dicom/nsclc"
+  raw_nifti_root: "${PROJECT_ROOT}/data/raw/nifti/nsclc"
+  patient_prefix: []
+  seg_name_hint: ["segmentation", "result", "seg"]
+  save_seg_as_dcm: false

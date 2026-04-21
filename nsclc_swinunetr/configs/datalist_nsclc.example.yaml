@@ -1,0 +1,14 @@
+﻿datalist:
+  roi_root: "${PROJECT_ROOT}/data/roi/nsclc"
+  out_dir: "${PROJECT_ROOT}/datalist"
+  name: "NSCLC_ROI"
+  include_fields: ["lung"]
+  min_tumor_ratio: 0.0
+  holdout_ratio: 0.15
+  k: 5
+  seed: 42
+  export_all_folds: true
+  export_test_as_datalist: true
+  max_rois_per_pid_train: 2
+  max_rois_per_pid_val: 2
+  select_by: "largest"
