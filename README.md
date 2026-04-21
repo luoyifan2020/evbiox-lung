@@ -82,3 +82,7 @@ evbiox-lung/
          ├─ interactive-report-overview.png
          ├─ stl-gt-vs-pred.png
          └─ risk-km-overview.png
+
+Example cfg-driven workflow
+
+The example scripts below use `--cfg` with public example YAML files.
